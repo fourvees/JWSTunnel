@@ -1,0 +1,243 @@
+package async;
+
+import org.glassfish.tyrus.client.ClientManager;
+import javax.websocket.ClientEndpointConfig;
+import javax.websocket.MessageHandler;
+import javax.websocket.Session;
+import java.net.URI;
+import javax.websocket.*;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.StandardSocketOptions;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousServerSocketChannel;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
+import java.util.Arrays;
+import bayou.http.HttpClient;
+import bayou.http.HttpClientConf;
+import bayou.http.HttpRequest;
+import bayou.http.HttpResponse;
+import bayou.async.Async;
+import bayou.http.HttpProxy;
+import java.io.ByteArrayOutputStream;
+import javax.xml.bind.DatatypeConverter;
+import java.security.*;
+import com.neovisionaries.ws.client.*;
+
+class AsynCon
+{
+public AsynchronousSocketChannel channel;
+//public Session session;
+public WebSocket session;
+public ByteBuffer buffer;
+
+public AsynCon(AsynchronousSocketChannel channel,WebSocket session,ByteBuffer buffer)
+{
+	this.channel = channel;
+	this.session = session;
+	this.buffer = buffer;
+} 
+
+public AsynCon()
+{
+
+}
+
+}
+
+public class WSClient {
+
+public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    
+   static void write(byte[] data, AsynCon asy){ 
+		System.out.println(data);
+		final ByteBuffer buffer = ByteBuffer.wrap(data);		
+		// callback 3
+									asy.channel.write(buffer, asy, new CompletionHandler<Integer, AsynCon>() {		
+										@Override
+										public void completed(Integer result, AsynCon asy) {
+										System.out.println("Writing client completed");
+										buffer.flip();
+										System.out.println(result);
+										try{
+										System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(buffer.array())));
+										}catch(Exception e){}
+										System.out.println("Is Buffer Fill .. " + !buffer.hasRemaining());
+											/*if (buffer.hasRemaining()) {
+												System.out.println("Data Left");
+												connection.write(buffer, null, this);
+											} else { */
+											System.out.println("Writing client completed");
+												//bbAttachment.clear();
+												read(asy);
+											//}
+											
+										}		
+										@Override
+										public void failed(Throwable t, AsynCon asy) {
+											t.printStackTrace();
+										}										
+									});	
+		
+	}
+	
+	static void read(AsynCon asy){	
+	final ByteBuffer buffer = ByteBuffer.allocate(5000);
+	// callback 2
+	System.out.println("Waiting for Client");
+							asy.channel.read(buffer, asy, new CompletionHandler<Integer, AsynCon>() {
+								@Override
+								public void completed(Integer result, final AsynCon scAttachment) {	
+									System.out.println("Reading from client completed");
+									System.out.println("Result for Read: " + result);
+									System.out.println("Has Remaining " + buffer.remaining());
+									System.out.println("Buffer Limit " + buffer.limit());
+									
+									buffer.clear();
+									
+									/*if (result == -1) {
+										System.out.println("No data... ");																					
+											asy.channel.read(buffer, asy, this);										
+								    }*/
+									
+										try {					
+										
+										  if(buffer.hasRemaining() && result>=0)
+										  {
+												
+												byte arr[] = new byte[result];	
+												ByteBuffer b = buffer.get(arr,0,result);												
+												baos.write(arr,0,result);
+												//ByteBuffer q = ByteBuffer.wrap(baos.toByteArray());
+												asy.session.sendBinary(baos.toByteArray());
+												System.out.println("Size sent " + baos.size());
+												String message = new String(buffer.array()).trim();		
+												System.out.println(new String(baos.toByteArray()));
+												System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(arr)));
+												System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(baos.toByteArray())));
+												baos = new ByteArrayOutputStream();
+												//System.out.println("From Client : " + message);
+												//System.out.println(Arrays.toString(buffer.array()));
+										
+												/*HttpClient client = new HttpClientConf()
+													.proxy(new HttpProxy("proxy.cognizant.com", 6050,"414612","Fourvees@19832712"))
+													.trafficDump(System.err::print)
+													.newClient();
+													
+												HttpRequest request = HttpRequest.toPost("http://s3.amazonaws.com/ssd","application/x-www-form-urlencoded",message.getBytes());
+												Async<HttpResponse> asyncRes = client.send( request );
+												asyncRes.peek( response -> action2(response,connection));																																	
+												*/
+											}else{
+												byte arr[] = new byte[result];
+												ByteBuffer b = buffer.get(arr,0,result);
+												baos.write(arr,0,result);
+												asy.channel.read(buffer, asy, this);
+											}
+											} catch (Exception e) {
+												e.printStackTrace();
+											}																										
+
+									
+									//byte [] message1 = new String("OVER").getBytes();
+									//buffer.wrap(message1);
+																									
+								}
+								@Override
+								public void failed(Throwable t, AsynCon scAttachment) {
+									t.printStackTrace();
+								}								
+							});	
+	
+	}
+   
+    public static void main(String [] args){
+        try {
+         
+			AsynCon asy=new AsynCon();
+			String SENT_MESSAGE = new String("Hello World".getBytes(),"US-ASCII");
+			
+			AsynchronousServerSocketChannel listener = AsynchronousServerSocketChannel.open();
+			listener.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+			listener.bind(new InetSocketAddress("localhost", 3883));
+					
+            final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
+
+            ClientManager client = ClientManager.createClient();
+			Session ses = null;			
+            
+			WebSocket ws = new WebSocketFactory().createSocket("ws://localhost:8080");
+			
+			ws.addListener(new WebSocketAdapter() {
+			@Override
+			public void onTextMessage(WebSocket websocket, String message) throws Exception {
+					System.out.println("TXT MSG" + message);
+				}
+			
+			public void onBinaryMessage(WebSocket websocket, byte[] binary)
+			{
+				try{
+					System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(binary)));
+				}catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+				write(binary,asy);
+			}
+			
+			
+			
+			});
+			
+			//Thread.sleep(5000);
+           //ses.getBasicRemote().sendBinary(ByteBuffer.wrap("Java".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("FFF");
+		  // Thread.sleep(10000);
+		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("CPP".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("GGG");
+		  // Thread.sleep(15000);
+		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("SCALA".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("KKK");		
+		   ws.connect();		   
+		   asy.session = ws;
+		   System.out.println("Listening for connection from client...");
+		   while (true) {
+				
+				// callback 1
+				listener.accept(asy, new CompletionHandler<AsynchronousSocketChannel, AsynCon>() {
+					@Override
+					public void completed(AsynchronousSocketChannel connection, AsynCon v) {							
+							listener.accept(null, this); // get ready for next connection											
+							final ByteBuffer buffer = ByteBuffer.allocate(32);
+							System.out.println("Client connected...");
+							byte[] emptyArray = new byte[0];
+							v.channel = connection;
+							v.buffer = buffer;		
+							try{
+								//v.session.getBasicRemote().sendBinary(ByteBuffer.wrap("\n".getBytes()));							
+								v.session.sendBinary(emptyArray);
+							}catch(Exception e) {  e.printStackTrace(); }
+					}
+					@Override
+					public void failed(Throwable t, AsynCon v) {
+						t.printStackTrace();
+					}					
+				});
+
+				System.in.read(); // so we don't exit before a connection is established
+				
+			}
+		   
+		   
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+		
+			
+    }
+}
