@@ -11,8 +11,8 @@ The client component supports connecting to the websocket server component over 
 
 To build the project 
 
-1) git clone 
-2) mvn package
+	git clone 
+	mvn package
 
 To start the websocket server  
 
