@@ -9,7 +9,7 @@ The server component supports multiple websocket clients forwarding to multiple 
 
 The client component supports connecting to the websocket server component over corporate proxy.
 
-To build the project 
+To build this project 
 
 	git clone https://github.com/fourvees/JWSTunnel.git 
 	mvn package
