@@ -26,11 +26,11 @@ To run the websocket client
 
 	java -jar Client.jar <LocalPort> <BackEndHost> <BackEndPort>
 
-	For Eg. to tunnel SSH
+For Eg. to tunnel SSH
 
 	java -jar Client.jar 3383 127.0.0.1 22
 
-	Here 3383 is the local port on which you can connect your SSH client(Putty)
+Here 3383 is the local port on which you can connect your SSH client(Putty)
 
 
 	
