@@ -95,7 +95,7 @@
 					</excludes>
 				</filter>
 			   </filters>
-			   <finalName>Server</finalName>
+			   <finalName>JWSServer</finalName>
 			</configuration>
 		      </execution>
 			  
@@ -125,7 +125,7 @@
 					</excludes>
 				</filter>
 			   </filters>
-			   <finalName>Client</finalName>
+			   <finalName>JWSClient</finalName>
 			</configuration>
 		      </execution>
 			  

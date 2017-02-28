@@ -16,21 +16,21 @@ To build the project
 
 To start the websocket server  
 
-	java -jar Server.jar
+	java -jar JWSServer.jar
 
 To configure the websocket client
 
-	java -jar Client.jar config
+	java -jar JWSClient.jar config
 
 To run the websocket client
 
-	java -jar Client.jar <LocalPort> <BackEndHost> <BackEndPort>
+	java -jar JWSClient.jar <LocalPort> <BackEndHost> <BackEndPort>
 
 For Eg. to tunnel SSH
 
-	java -jar Client.jar 3383 127.0.0.1 22
+	java -jar JWSClient.jar 3383 127.0.0.1 22
 
-Here 3383 is the local port on which you can connect your SSH client(Putty)
+Here 3383 is the local port on which you can connect your SSH client(Putty) behind your proxy.
 
 
 	
