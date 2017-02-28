@@ -11,7 +11,7 @@ The client component supports connecting to the websocket server component over 
 
 To build the project 
 
-	git clone 
+	git clone https://github.com/fourvees/JWSTunnel.git 
 	mvn package
 
 To start the websocket server  
