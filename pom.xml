@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>async</groupId>
-	<artifactId>JWSTunnel</artifactId>
+	<artifactId>SuperTunnel</artifactId>
 	<version>1.0.0</version>
 	<properties>
 		<java.version>1.8</java.version>
@@ -95,7 +95,7 @@
 					</excludes>
 				</filter>
 			   </filters>
-			   <finalName>JWSServer</finalName>
+			   <finalName>Server</finalName>
 			</configuration>
 		      </execution>
 			  
@@ -125,7 +125,7 @@
 					</excludes>
 				</filter>
 			   </filters>
-			   <finalName>JWSClient</finalName>
+			   <finalName>Client</finalName>
 			</configuration>
 		      </execution>
 			  

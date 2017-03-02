@@ -134,6 +134,7 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	
 	static void read(AsynCon asy){	
 	final ByteBuffer buffer = ByteBuffer.allocate(50000);
+	//System.out.println(asy.channel);
 	// callback 2
 	//System.out.println("Waiting for Client");
 							asy.channel.read(buffer, asy, new CompletionHandler<Integer, AsynCon>() {
@@ -188,10 +189,12 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 													byte arr[] = new byte[result];
 													ByteBuffer b = buffer.get(arr,0,result);
 													baos.write(arr,0,result);
+													read(scAttachment);
 												}
-												read(scAttachment);
+												
 												//asy.channel.read(buffer, asy, this);
 											}
+											
 											} catch (Exception e) {
 												e.printStackTrace();
 											}																										
@@ -300,7 +303,34 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
             ClientManager client = ClientManager.createClient();
 			Session ses = null;			
-            WebSocketFactory factory = new WebSocketFactory();
+            
+			
+			//Thread.sleep(5000);
+           //ses.getBasicRemote().sendBinary(ByteBuffer.wrap("Java".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("FFF");
+		  // Thread.sleep(10000);
+		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("CPP".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("GGG");
+		  // Thread.sleep(15000);
+		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("SCALA".getBytes(Charset.forName("US-ASCII" ))));
+		   //ses.getBasicRemote().sendText("KKK");		
+		  
+		   System.out.println("Listening for connection from client...");
+		   while (true) {
+				
+				// callback 1
+				listener.accept(asy, new CompletionHandler<AsynchronousSocketChannel, AsynCon>() {
+					@Override
+					public void completed(AsynchronousSocketChannel connection, AsynCon v) {							
+							listener.accept(v, this); // get ready for next connection											
+							final ByteBuffer buffer = ByteBuffer.allocate(32);
+							System.out.println("Client connected...");
+							byte[] emptyArray = new byte[0];							
+							v.channel = connection;
+							v.buffer = buffer;									
+							try{
+							
+							WebSocketFactory factory = new WebSocketFactory();
 			ProxySettings settings = factory.getProxySettings();
 			settings.setHost(prop.getProperty("ProxyHost"));
 			settings.setPort(Integer.parseInt(prop.getProperty("ProxyPort")));			
@@ -359,34 +389,15 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			
 			});
 			
-			//Thread.sleep(5000);
-           //ses.getBasicRemote().sendBinary(ByteBuffer.wrap("Java".getBytes(Charset.forName("US-ASCII" ))));
-		   //ses.getBasicRemote().sendText("FFF");
-		  // Thread.sleep(10000);
-		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("CPP".getBytes(Charset.forName("US-ASCII" ))));
-		   //ses.getBasicRemote().sendText("GGG");
-		  // Thread.sleep(15000);
-		  // ses.getBasicRemote().sendBinary(ByteBuffer.wrap("SCALA".getBytes(Charset.forName("US-ASCII" ))));
-		   //ses.getBasicRemote().sendText("KKK");		
-		   ws.addHeader("Origin", "http://" + prop.getProperty("WebSocketHost"));
-		   ws.connect();		   
-		   asy.session = ws;
-		   System.out.println("Listening for connection from client...");
-		   while (true) {
-				
-				// callback 1
-				listener.accept(asy, new CompletionHandler<AsynchronousSocketChannel, AsynCon>() {
-					@Override
-					public void completed(AsynchronousSocketChannel connection, AsynCon v) {							
-							listener.accept(v, this); // get ready for next connection											
-							final ByteBuffer buffer = ByteBuffer.allocate(32);
-							System.out.println("Client connected...");
-							byte[] emptyArray = new byte[0];
-							v.channel = connection;
-							v.buffer = buffer;		
-							try{
+			ws.addHeader("Origin", "http://" + prop.getProperty("WebSocketHost"));
+		    ws.connect();		   
+			v.session = ws;			
+								//v.session.disconnect();
+								//v.session.connect();
+								//Thread.sleep(5000);
 								//v.session.getBasicRemote().sendBinary(ByteBuffer.wrap("\n".getBytes()));							
 								String msg11 = args[1] + "|" + args[2];
+								//System.out.println(msg11);
 								v.session.sendBinary(msg11.getBytes());
 								read(v);
 							}catch(Exception e) {  e.printStackTrace(); }
