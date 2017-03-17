@@ -48,39 +48,41 @@ public AsynchronousSocketChannel channel;
 public WebSocket session;
 public ByteBuffer buffer;
 public boolean isFirst;
+public ByteArrayOutputStream baos = new ByteArrayOutputStream();
+public  ReentrantLock lock;
+public  Queue<ByteBuffer> queue;
 
 public AsynCon(AsynchronousSocketChannel channel,WebSocket session,ByteBuffer buffer)
 {
 	this.channel = channel;
 	this.session = session;
 	this.buffer = buffer;
-	isFirst = true;
+	this.isFirst = true;
 } 
 
 public AsynCon()
 {
-
+	//this.isFirst = true;
+	this.baos = new ByteArrayOutputStream();
+	this.lock = new ReentrantLock();
+	this.queue = new LinkedList<ByteBuffer>();
 }
 
 }
 
 public class WSClient {
-
-public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    static boolean inprogress = false;
- private static  ReentrantLock lock;
-    private static  Queue<ByteBuffer> queue;
-	static String IV = "AAAAAAAAAAAAAAAA";
+  static boolean inprogress = false;
+  static String IV = "AAAAAAAAAAAAAAAA";
   static String plaintext = "test text 123\0\0\0"; /*Note null padding*/
   static String encryptionKey = "0123456789abcdef" + IV;
-	
-   static boolean write(byte[] data, AsynCon asy){ 
+  	
+   public boolean write(byte[] data, AsynCon asy){ 
 		System.out.println("Received " + data.length);		
-		lock.lock();
+		asy.lock.lock();
 		final ByteBuffer buffer = ByteBuffer.wrap(data);		
 		try{	
-			boolean wasEmpty = queue.isEmpty();
-			queue.add( buffer );
+			boolean wasEmpty = asy.queue.isEmpty();
+			asy.queue.add( buffer );
 			
             if (wasEmpty)
             {    						
@@ -90,24 +92,24 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 									asy.channel.write(buffer, asy, new CompletionHandler<Integer, AsynCon>() {		
 										@Override
 										public void completed(Integer result, AsynCon asy) {	
-										lock.lock();										
+										asy.lock.lock();										
 										buffer.flip();										
 										try{
 										//System.out.println(asy.isFirst);
 										//System.out.println("Is Buffer Fill .. " + !buffer.hasRemaining());
-										System.out.println("Queue Size " + queue.size());
+										System.out.println("Queue Size " + asy.queue.size());
 										if(asy.isFirst)
 										{
-											ByteBuffer byteBuffer = queue.peek();											
-											queue.poll();
+											ByteBuffer byteBuffer = asy.queue.peek();											
+											asy.queue.poll();
 											asy.isFirst = false;											
 										}
 											
-										if(!queue.isEmpty())
+										if(!asy.queue.isEmpty())
 										{
-											ByteBuffer byteBuffer = queue.peek();
+											ByteBuffer byteBuffer = asy.queue.peek();
 											asy.channel.write(byteBuffer, asy,this);
-											queue.poll();
+											asy.queue.poll();
 										}
 										
 												if (buffer.hasRemaining()) {
@@ -115,24 +117,28 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 													//connection.write(buffer, null, this);
 												}
 											}finally{
-												lock.unlock();
+												asy.lock.unlock();
 											}
 										}		
 										@Override
 										public void failed(Throwable t, AsynCon asy) {
+										System.out.println("ERROR WRITING");
+										try{
+											//asy.channel.close();
+											}catch(Exception e){}
 											t.printStackTrace();
 										}										
 									});	
 		
-		}	
+		}
 		}finally {			
-			lock.unlock();
+			asy.lock.unlock();
 		}
 		
 		return true;		
 	}
 	
-	static void read(AsynCon asy){	
+	public void read(AsynCon asy){	
 	final ByteBuffer buffer = ByteBuffer.allocate(50000);
 	//System.out.println(asy.channel);
 	// callback 2
@@ -160,15 +166,25 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 												
 												byte arr[] = new byte[result];	
 												ByteBuffer b = buffer.get(arr,0,result);												
-												baos.write(arr,0,result);
+												scAttachment.baos.write(arr,0,result);
 												//ByteBuffer q = ByteBuffer.wrap(baos.toByteArray());
-												asy.session.sendBinary(baos.toByteArray());
-												System.out.println("Sent " + baos.size());
+												if(asy.session.isOpen())
+													asy.session.sendBinary(scAttachment.baos.toByteArray());
+												else
+													{
+														System.out.println("WS Close... Attempting to Reconnect");
+														try{															
+														//asy.session = asy.session.recreate().connect();
+														//asy.session.sendBinary(scAttachment.baos.toByteArray());
+														scAttachment.channel.close(); //Close so that lets establish a new session
+														}catch(Exception e){}
+													}
+												System.out.println("Sent " + scAttachment.baos.size());
 												String message = new String(buffer.array()).trim();		
 												//System.out.println(new String(baos.toByteArray()));
 												//System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(arr)));
 												//System.out.println("HASH : " + DatatypeConverter.printHexBinary(MessageDigest.getInstance("MD5").digest(baos.toByteArray())));
-												baos = new ByteArrayOutputStream();
+												scAttachment.baos = new ByteArrayOutputStream();
 												read(scAttachment);
 												//asy.channel.read(buffer, asy, this);
 												//System.out.println("From Client : " + message);
@@ -188,7 +204,7 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 												{
 													byte arr[] = new byte[result];
 													ByteBuffer b = buffer.get(arr,0,result);
-													baos.write(arr,0,result);
+													scAttachment.baos.write(arr,0,result);
 													read(scAttachment);
 												}
 												
@@ -196,6 +212,10 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 											}
 											
 											} catch (Exception e) {
+											System.out.println("ERROR READ 1");
+											try{
+												//scAttachment.channel.close();
+												}catch(Exception e1){}
 												e.printStackTrace();
 											}																										
 
@@ -206,6 +226,10 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 								}
 								@Override
 								public void failed(Throwable t, AsynCon scAttachment) {
+								System.out.println("ERROR READ 2");
+								try{
+									//scAttachment.channel.close();
+									}catch(Exception e){}
 									t.printStackTrace();
 								}								
 							});	
@@ -289,12 +313,7 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				System.out.println("Invalid Arguments");
 				System.exit(1);
 			}
-		 
-			AsynCon asy=new AsynCon();
-			lock = new ReentrantLock();
-			queue = new LinkedList<ByteBuffer>();
-			String SENT_MESSAGE = new String("Hello World".getBytes(),"US-ASCII");
-			
+		 			
 			AsynchronousServerSocketChannel listener = AsynchronousServerSocketChannel.open();
 			listener.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 			listener.bind(new InetSocketAddress("localhost", Integer.parseInt(args[0])));
@@ -317,19 +336,24 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		  
 		   System.out.println("Listening for connection from client...");
 		   while (true) {
+		   
+				
 				
 				// callback 1
-				listener.accept(asy, new CompletionHandler<AsynchronousSocketChannel, AsynCon>() {
+				listener.accept(new AsynCon(), new CompletionHandler<AsynchronousSocketChannel, AsynCon>() {
 					@Override
-					public void completed(AsynchronousSocketChannel connection, AsynCon v) {							
-							listener.accept(v, this); // get ready for next connection											
+					public void completed(AsynchronousSocketChannel connection, AsynCon v) {		
+							System.out.println(connection);
+							WSClient wsc = new WSClient();							
+							//String SENT_MESSAGE = new String("Hello World".getBytes(),"US-ASCII");							
 							final ByteBuffer buffer = ByteBuffer.allocate(32);
 							System.out.println("Client connected...");
 							byte[] emptyArray = new byte[0];							
+							//v=new AsynCon();
 							v.channel = connection;
-							v.buffer = buffer;									
-							try{
-							
+							v.buffer = buffer;													
+							listener.accept(new AsynCon(), this); // get ready for next connection	
+							try{							
 							WebSocketFactory factory = new WebSocketFactory();
 			ProxySettings settings = factory.getProxySettings();
 			settings.setHost(prop.getProperty("ProxyHost"));
@@ -358,7 +382,7 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				//{
 					//System.out.println(inprogress);
 				//}
-				write(binary,asy);
+				wsc.write(binary,v);
 				
 			}
 			
@@ -399,14 +423,14 @@ public static ByteArrayOutputStream baos = new ByteArrayOutputStream();
 								String msg11 = args[1] + "|" + args[2];
 								//System.out.println(msg11);
 								v.session.sendBinary(msg11.getBytes());
-								read(v);
+								wsc.read(v);
 							}catch(Exception e) {  e.printStackTrace(); }
 					}
 					@Override
 					public void failed(Throwable t, AsynCon v) {
 						t.printStackTrace();
 					}					
-				});
+				});	
 
 				System.in.read(); // so we don't exit before a connection is established
 				

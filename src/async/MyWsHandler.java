@@ -32,7 +32,7 @@ public class MyWsHandler extends Endpoint
 	 //AsynchronousSocketChannel client = null;
      //InetSocketAddress hostAddress = new InetSocketAddress("localhost", 22);
 	 boolean init = false;
-	 int i =0;
+	 long i =0;
 	 int counter =0;
 	 ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	 ReentrantLock lock = new ReentrantLock();
@@ -97,9 +97,10 @@ public class MyWsHandler extends Endpoint
 												{
 													byte arr[] = new byte[result];
 													ByteBuffer b = buffer.get(arr,0,result);
-													baos.write(arr,0,result);													
+													baos.write(arr,0,result);				
+													readFromServer(scAttachment.channel,scAttachment.client);
 												}
-												readFromServer(scAttachment.channel,scAttachment.client);
+												
 												//client.read(buffer, scAttachment, this);
 											}
 											} catch (Exception e) {
@@ -186,14 +187,14 @@ public class MyWsHandler extends Endpoint
 	 @Override
     public void onOpen(final Session session, EndpointConfig config) {
 		i=0;
-		System.out.println(session.getId());
+		System.out.println("New Session " + session.getId());
         session.addMessageHandler(new MessageHandler.Whole<ByteBuffer>() {			
             @Override
             public void onMessage(ByteBuffer message) {
                 try {
 					message.clear();
 					i++;
-					//System.out.println("VALUE OF " + i);
+					System.out.println("Packet # " + i + " for Session " + session.getId() );
 					//System.out.println("READ FROM WS " + message.capacity());
 					process(message,session);					
 					/*for(int i=0;i<=100;i++)
