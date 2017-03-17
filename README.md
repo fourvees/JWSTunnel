@@ -32,5 +32,7 @@ For Eg. to tunnel SSH
 
 Here 3383 is the local port on which you can connect your SSH client(Putty) behind your proxy.
 
+Works good with KiTTY SSH client with auto reconnect enabled.
+
 
 	
